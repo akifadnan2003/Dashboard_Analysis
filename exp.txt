@@ -1,0 +1,22 @@
+The Data We Have: Zendesk Export
+Source: A full, raw data export from Zendesk.
+
+Format: A very large JSON file. Based on initial analysis, it appears to be in a JSON Lines (.jsonl) format, where each line is a separate JSON object.
+
+Size & Quality: The file is very large (heavy) and contains some non-JSON lines (like URLs or headers) that need to be filtered out during processing.
+
+Key Contents: The data is rich and contains detailed information for each ticket, including:
+
+Ticket Info: id, url, created_at, subject, description, status, priority, tags.
+
+Metadata: channel, via, custom_fields.
+
+Associated IDs: requester_id, assignee_id, group_id.
+
+🎯 The Problem We Want to Solve
+Our primary goal is to transform this raw ticket data into actionable business intelligence to help the company identify and track product-related problems. We need to build a system that can answer key questions about product performance.
+
+Our analysis will focus on three main objectives:
+
+1. Organize and Profile the Data
+The immediate task is to process the complex JSON file into a structured and usable format (like a clean CSV file or a BigQuery table). The first step is to create a Data Profiling Report that details all available columns, their data types, and the extent of any missing dat
