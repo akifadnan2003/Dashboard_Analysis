@@ -1,46 +1,60 @@
 import pandas as pd
 import json
 
-def profile_robust_zendesk_data(json_file_path):
+def profile_nested_zendesk_data(json_file_path):
     """
-    Reads a large Zendesk JSON file line-by-line, skipping any corrupted
-    or non-JSON lines, analyzes it, and saves a report.
+    Reads a complex, nested Zendesk JSON file, intelligently finds the list of tickets,
+    analyzes its structure, and saves a complete report.
     """
-    print(f"--- Robustly streaming data from large file: '{json_file_path}' ---")
-    
-    records = []
-    invalid_line_count = 0
+    print(f"--- Loading complex JSON from '{json_file_path}' ---")
     
     try:
         with open(json_file_path, 'r', encoding='utf-8') as f:
-            for i, line in enumerate(f):
-                # --- THIS IS THE KEY CHANGE ---
-                try:
-                    # Attempt to load the line as a JSON object
-                    records.append(json.loads(line))
-                except json.JSONDecodeError:
-                    # If it fails, increment the counter and skip the line
-                    invalid_line_count += 1
-                    # Optional: uncomment the line below to see which lines are failing
-                    # print(f"Warning: Skipping invalid JSON on line {i+1}")
-                    continue
-        
-        if not records:
-            print("Error: No valid JSON records were found in the file.")
-            return
+            data = json.load(f)
 
-        df = pd.json_normalize(records)
+        tickets_list = None
         
+        # --- THIS IS THE NEW INTELLIGENT LOGIC ---
+        if isinstance(data, list):
+            # The file is just a simple list of tickets.
+            tickets_list = data
+        elif isinstance(data, dict):
+            # The file is a dictionary. We need to find the list of tickets inside it.
+            print(f"Found top-level keys in the JSON object: {list(data.keys())}")
+            
+            # Common key names for ticket lists in Zendesk exports
+            possible_keys = ['results', 'tickets', 'exports', 'audits']
+            
+            # First, check for common key names
+            for key in possible_keys:
+                if key in data and isinstance(data[key], list):
+                    print(f"Found list of tickets under the common key: '{key}'")
+                    tickets_list = data[key]
+                    break
+            
+            # If no common key is found, search for the first available list
+            if tickets_list is None:
+                for key, value in data.items():
+                    if isinstance(value, list):
+                        print(f"Found a list under the key: '{key}'. Assuming this is the ticket data.")
+                        tickets_list = value
+                        break
+        
+        if tickets_list is None:
+            print("\n--- ERROR ---")
+            print("Could not automatically find a list of tickets within the JSON file.")
+            print("Please inspect the top-level keys printed above and adjust the script if needed.")
+            return
+        
+        # Once the list is found, the rest of the process is the same.
+        df = pd.json_normalize(tickets_list)
+        
+        # --- The rest of the report generation remains the same ---
         print("\n" + "="*50)
         print("DATA PROFILING REPORT")
         print("="*50)
-        if invalid_line_count > 0:
-            print(f"NOTE: Skipped {invalid_line_count} invalid or non-JSON lines.")
-
-        # --- The rest of the report generation is the same ---
         print("\n--- 1. Basic Information ---")
-        print(f"Total number of valid tickets found: {len(df)}")
-        # (The rest of the reporting code remains the same...)
+        print(f"Total number of tickets found: {len(df)}")
         print(f"Total number of columns (fields) found: {len(df.columns)}")
         print("\n--- 2. Column Names & Data Types ---")
         with pd.option_context('display.max_rows', None):
@@ -81,4 +95,4 @@ def profile_robust_zendesk_data(json_file_path):
 # --- MAIN EXECUTION ---
 if __name__ == "__main__":
     ZENDESK_JSON_FILE = "your_data_file.json" 
-    profile_robust_zendesk_data(ZENDESK_JSON_FILE)
+    profile_nested_zendesk_data(ZENDESK_JSON_FILE)
